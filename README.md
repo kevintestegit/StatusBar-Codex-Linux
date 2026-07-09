@@ -2,7 +2,11 @@
 
 Um applet nativo de **bandeja do sistema Linux** que exibe o uso do Codex diretamente na barra superior.
 
-![Barra superior com o label do Codex Usage Tray](tray-bar.png)
+<div align="center">
+  <img width="260" alt="Menu da bandeja" src="tray-menu.png">
+  <br>
+  <em>Menu suspenso com rate limits, custos, tokens e configurações</em>
+</div>
 
 Na barra do sistema (topo da tela), o app mostra um label como `5h 1% | $0.00` — o percentual do limite de 5 horas e o custo estimado do dia. A cor do ícone muda dinamicamente (verde → amarelo → vermelho) conforme o uso aumenta.
 
@@ -97,6 +101,16 @@ sudo apt install cargo pkg-config libgtk-3-dev \
 cargo build --release
 ./target/release/codex-usage-tray
 ```
+
+### Dashboard detalhado
+
+Além do label na bandeja, o app gera um dashboard HTML completo com tabela por modelo, breakdown de tokens e custos:
+
+<div align="center">
+  <img width="760" alt="Dashboard HTML" src="dashboard.png">
+  <br>
+  <em>Dashboard HTML com rate limits, custos e breakdown por modelo</em>
+</div>
 
 ### Stack
 
