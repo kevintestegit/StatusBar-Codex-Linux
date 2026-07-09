@@ -1,17 +1,21 @@
 # StatusBar Codex Linux
 
-Um applet nativo de bandeja do sistema Linux para monitorar uso do Codex sem abrir o terminal.
+Um applet nativo de **bandeja do sistema Linux** que exibe o uso do Codex diretamente na barra superior.
 
-![Dashboard](dashboard.png)
+![Barra superior com o label do Codex Usage Tray](tray-bar.png)
+
+Na barra do sistema (topo da tela), o app mostra um label como `5h 1% | $0.00` — o percentual do limite de 5 horas e o custo estimado do dia. A cor do ícone muda dinamicamente (verde → amarelo → vermelho) conforme o uso aumenta.
 
 ## Como funciona
 
-O app lê arquivos JSONL de sessão do Codex em disco, analisa eventos `token_count` e `rate_limits`, e exibe na bandeja do sistema:
+O app lê arquivos JSONL de sessão do Codex em disco, analisa eventos `token_count` e `rate_limits`, e exibe na bandeja:
 
 - **Limites de taxa** — uso da janela de 5h e semanal, com contagem regressiva para reset
 - **Custo estimado** — equivalente API pública por dia, mês e total histórico
 - **Consumo por modelo** — breakdown de tokens input/cached/output/reasoning por modelo (GPT-5, GPT-5.4, etc.)
 - **Ritmo de uso** — se está dentro do esperado ou queimando o limite muito rápido
+- **Notificações desktop** — alerta quando o limite reseta ou o ritmo está acelerado
+- **Modo festa** — overlay fullscreen com confete Cairo quando o limite semanal reseta
 
 ### Arquitetura
 
@@ -31,13 +35,14 @@ O app lê arquivos JSONL de sessão do Codex em disco, analisa eventos `token_co
   └──────┬──────────┘
          │
          ▼
-  ┌─────────────────┐
-  │  GTK3 Tray      │  ───  AppIndicator com menu, labels, submenus
-  │  + Cairo        │       confete fullscreen (party mode)
-  └─────────────────┘
+  ┌──────────────────────┐
+  │  GTK3 AppIndicator   │  ───  label "5h 1% | $0.00" na bandeja
+  │  + menu com detalhes │       menu com rate limits, custos, refresh
+  │  + Cairo confete     │       notificações e modo festa
+  └──────────────────────┘
          │
          ▼
-    Bandeja do sistema
+    Bandeja do sistema Linux
     "5h 1% | $0.00"
 ```
 
@@ -60,13 +65,14 @@ O app lê arquivos JSONL de sessão do Codex em disco, analisa eventos `token_co
 
 ### Funcionalidades
 
-- Indicador na bandeja com cor dinâmica (verde → amarelo → vermelho conforme uso)
-- Menu com rate limits, custos, tokens, modo festa, intervalo de refresh
-- Notificações desktop em reset de janela e ritmo acelerado
-- Modo festa: overlay fullscreen com confete Cairo quando o limite semanal reseta
-- Dashboard HTML detalhado com tabela por modelo
-- Ícones SVG gerados dinamicamente no `/tmp` com percentual
-- Cache inteligente: não reparsa arquivos JSONL inalterados
+- **Label na bandeja**: `"5h 1% | $0.00"` — visível direto na barra do sistema
+- **Ícone com cor dinâmica**: verde → amarelo → vermelho conforme o percentual de uso
+- **Menu suspenso**: rate limits, custos, tokens, modo festa, intervalo de refresh
+- **Notificações desktop**: quando uma janela de taxa reseta ou o ritmo está acelerado
+- **Modo festa**: overlay fullscreen com confete Cairo via GTK Layer Shell
+- **Dashboard HTML detalhado**: tabela por modelo com input/cached/output/reasoning/custo
+- **Cache inteligente**: não reparsa arquivos JSONL inalterados
+- **Ícones SVG**: gerados dinamicamente em `/tmp/codex-usage-tray-icons/`
 
 ### Configuração
 
@@ -85,7 +91,8 @@ Ajustável via menu da bandeja (5s, 15s, 30s, 1min, 5min).
 
 ```bash
 # Dependências (Debian/Ubuntu)
-sudo apt install cargo pkg-config libgtk-3-dev libayatana-appindicator3-dev libgtk-layer-shell-dev
+sudo apt install cargo pkg-config libgtk-3-dev \
+  libayatana-appindicator3-dev libgtk-layer-shell-dev
 
 cargo build --release
 ./target/release/codex-usage-tray
