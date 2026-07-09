@@ -1,0 +1,38 @@
+Codex Status
+
+Plan: plus
+Auth: ChatGPT/Codex auth configured
+Status source: codex app-server account/rateLimits/read
+Last update: 2026-07-09 10:41:09
+Party mode: off
+Refresh interval: 5s
+
+Rate limits (Codex/ChatGPT account)
+5h: 1% used | reset in 4h 59m at 15:41
+Weekly: 67% used | reset in 1d 1h at 11:41
+Pace: on pace | expected 0.0%
+
+Local Codex session tokens (not OpenCode)
+Today: 0 tokens | n/a
+This month: 90,306,615 tokens | $66.88
+All-time: 2,980,871,465 tokens | $986.4
+
+Token breakdown
+All-time input: 2,954,871,973
+All-time cached input: 2,814,144,640
+All-time output: 11,342,214
+All-time reasoning: 4,998,728
+Skipped with no public API price: 196,710
+
+Models
+gpt-5: 1,064,489,502 tokens | input 1,056,500,566 | cached 1,010,633,216 | output 3,641,717 | reasoning 1,614,475 | cost $220.1
+gpt-5.4: 603,211,481 tokens | input 600,535,282 | cached 560,052,352 | output 1,730,301 | reasoning 531,017 | cost $267.2
+gpt-5.5: 293,830,089 tokens | input 292,882,240 | cached 279,056,384 | output 830,454 | reasoning 206,453 | cost $233.6
+gpt-5.2-codex: 292,732,570 tokens | input 285,049,103 | cached 276,171,264 | output 1,249,531 | reasoning 559,426 | cost $81.36
+gpt-5.2: 240,501,470 tokens | input 237,342,091 | cached 227,901,440 | output 1,249,839 | reasoning 633,231 | cost $73.90
+gpt-5.1-codex-max: 178,847,394 tokens | input 177,251,571 | cached 170,135,040 | output 807,521 | reasoning 382,453 | cost $38.24
+gpt-5-codex: 175,235,474 tokens | input 174,196,058 | cached 167,698,048 | output 1,039,416 | reasoning 609,472 | cost $39.48
+gpt-5.1-codex: 120,787,915 tokens | input 120,047,922 | cached 112,264,448 | output 722,307 | reasoning 424,138 | cost $30.99
+
+JSONL events: 30278 from 230 files
+
