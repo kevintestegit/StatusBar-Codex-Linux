@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Codex Usage Tray
+Comment=Show local Codex usage, rate limits, and token-cost estimates
+Exec=codex-usage-tray
+Icon=codex-desktop
+Terminal=false
+Categories=Utility;Development;

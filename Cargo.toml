@@ -1,0 +1,17 @@
+[package]
+name = "codex-usage-tray"
+version = "0.1.0"
+edition = "2024"
+description = "A native Linux tray applet for local Codex usage, rate limits, and token-cost estimates."
+readme = "README.md"
+repository = "https://github.com/wojciechsacewicz/codex-linux-usage-tray-indicator"
+keywords = ["codex", "tray", "gtk", "appindicator", "linux"]
+categories = ["command-line-utilities", "gui"]
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+chrono = { version = "0.4.44", default-features = false, features = ["clock", "std"] }
+serde_json = "1.0.149"
+walkdir = "2.5.0"
+
+
