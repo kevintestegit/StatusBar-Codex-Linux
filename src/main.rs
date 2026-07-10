@@ -1301,7 +1301,7 @@ fn ensure_label_icon(label: &str, pct: f64) -> String {
     let dir = env::temp_dir().join("codex-usage-tray-icons");
     let _ = fs::create_dir_all(&dir);
     let slug: String = label.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == ' ').collect();
-    let name = format!("codex-label-{}.svg", slug.trim().replace(' ', "_"));
+    let name = format!("codex-label-{}.png", slug.trim().replace(' ', "_"));
     let path = dir.join(&name);
     if !path.exists() {
         let color = rate_color(pct);
@@ -1313,10 +1313,13 @@ fn ensure_label_icon(label: &str, pct: f64) -> String {
             text = html_escape(label),
             color = color
         );
-        let _ = fs::write(&path, svg);
+        let svg_path = dir.join(&name.replace(".png", ".svg"));
+        let _ = fs::write(&svg_path, svg);
+        let _ = Command::new("convert")
+            .args(["-background", "#1a1a1a", "-size", "200x28", &svg_path.to_string_lossy(), &path.to_string_lossy()])
+            .output();
     }
-    // Return icon name without extension for GTK icon theme lookup
-    name.strip_suffix(".svg").unwrap_or(&name).to_string()
+    path.to_string_lossy().into_owned()
 }
 
 unsafe fn set_markup(label: *mut GtkWidget, markup: &str) {
@@ -1948,9 +1951,8 @@ fn main() {
             app_indicator_set_status(indicator, 1);
             let icon_theme_path = c_string(&paths::icon_dir().to_string_lossy());
             app_indicator_set_icon_theme_path(indicator, icon_theme_path.as_ptr());
-            let empty_icon = c_string(&ensure_empty_icon_path());
-            let icon_desc = c_string("Codex status");
-            app_indicator_set_icon_full(indicator, empty_icon.as_ptr(), icon_desc.as_ptr());
+            let icon_desc = c_string("Codex usage");
+            app_indicator_set_icon_full(indicator, c_string("codex-usage-tray").as_ptr(), icon_desc.as_ptr());
         let menu = gtk_menu_new();
         let (brand_header, _brand_header_label) =
             markup_menu_item("<span size='larger' weight='bold' color='#16b8a6'>◆ Codex Usage Tray</span>");
