@@ -1303,23 +1303,37 @@ fn ensure_label_icon(label: &str, pct: f64) -> String {
     let slug: String = label.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == ' ').collect();
     let name = format!("codex-label-{}.png", slug.trim().replace(' ', "_"));
     let path = dir.join(&name);
-    if !path.exists() {
-        let color = rate_color(pct);
-        let svg = format!(
-            r##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" viewBox="0 0 200 28">
+    let color = rate_color(pct);
+    let svg = format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" viewBox="0 0 200 28">
   <rect width="200" height="28" rx="4" fill="#1a1a1a"/>
   <text x="100" y="20" text-anchor="middle" font-family="SF Mono, JetBrains Mono, monospace" font-size="15" font-weight="700" fill="{color}">{text}</text>
 </svg>"##,
-            text = html_escape(label),
-            color = color
-        );
-        let svg_path = dir.join(&name.replace(".png", ".svg"));
-        let _ = fs::write(&svg_path, svg);
-        let _ = Command::new("convert")
-            .args(["-background", "#1a1a1a", "-size", "200x28", &svg_path.to_string_lossy(), &path.to_string_lossy()])
-            .output();
-    }
+        text = html_escape(label),
+        color = color
+    );
+    let svg_path = dir.join(&name.replace(".png", ".svg"));
+    let _ = fs::write(&svg_path, svg);
+    let _ = Command::new("convert")
+        .args(["-background", "#1a1a1a", "-size", "200x28", &svg_path.to_string_lossy(), &path.to_string_lossy()])
+        .output();
+    // Also update the themed icon location so GNOME picks it up
+    let themed_dir = home_icon_dir();
+    let _ = fs::create_dir_all(&themed_dir);
+    let themed_path = themed_dir.join("codex-usage-tray.png");
+    let _ = fs::copy(&path, &themed_path);
+    let _ = Command::new("gtk-update-icon-cache")
+        .args(["-q", "-f", &home_icon_dir().parent().unwrap().to_string_lossy()])
+        .output();
     path.to_string_lossy().into_owned()
+}
+
+fn home_icon_dir() -> PathBuf {
+    if let Some(home) = env::var_os("HOME") {
+        PathBuf::from(home).join(".local/share/icons/hicolor/scalable/apps")
+    } else {
+        PathBuf::from("/tmp/codex-usage-tray-icons")
+    }
 }
 
 unsafe fn set_markup(label: *mut GtkWidget, markup: &str) {
@@ -1845,10 +1859,8 @@ fn update_state(force: bool) {
             app_indicator_set_label(state.indicator, tray_label.as_ptr(), guide.as_ptr());
             let title = c_string(&snapshot.title);
             app_indicator_set_title(state.indicator, title.as_ptr());
-            let label_svg = ensure_label_icon(&snapshot.svg_label, primary_pct);
-            let label_path = c_string(&label_svg);
-            let icon_desc = c_string("Codex usage");
-            app_indicator_set_icon_full(state.indicator, label_path.as_ptr(), icon_desc.as_ptr());
+            // Regenerate the themed icon file so GTK picks it up on theme refresh
+            ensure_label_icon(&snapshot.svg_label, primary_pct);
         }
         state.last_render = Some(snapshot);
     }
