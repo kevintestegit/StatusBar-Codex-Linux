@@ -237,6 +237,7 @@ unsafe extern "C" {
         icon_desc: *const c_char,
     );
     fn app_indicator_set_title(self_: *mut AppIndicator, title: *const c_char);
+    fn app_indicator_set_icon_theme_path(self_: *mut AppIndicator, path: *const c_char);
 }
 
 #[link(name = "gtk-layer-shell")]
@@ -304,6 +305,7 @@ struct RenderSnapshot {
     party_mode_markup: String,
     refresh_interval_markup: String,
     tray_label: String,
+    svg_label: String,
     title: String,
 }
 
@@ -1295,6 +1297,28 @@ fn ensure_empty_icon_path() -> String {
     path.to_string_lossy().into_owned()
 }
 
+fn ensure_label_icon(label: &str, pct: f64) -> String {
+    let dir = env::temp_dir().join("codex-usage-tray-icons");
+    let _ = fs::create_dir_all(&dir);
+    let slug: String = label.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == ' ').collect();
+    let name = format!("codex-label-{}.svg", slug.trim().replace(' ', "_"));
+    let path = dir.join(&name);
+    if !path.exists() {
+        let color = rate_color(pct);
+        let svg = format!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" viewBox="0 0 200 28">
+  <rect width="200" height="28" rx="4" fill="#1a1a1a"/>
+  <text x="100" y="20" text-anchor="middle" font-family="SF Mono, JetBrains Mono, monospace" font-size="15" font-weight="700" fill="{color}">{text}</text>
+</svg>"##,
+            text = html_escape(label),
+            color = color
+        );
+        let _ = fs::write(&path, svg);
+    }
+    // Return icon name without extension for GTK icon theme lookup
+    name.strip_suffix(".svg").unwrap_or(&name).to_string()
+}
+
 unsafe fn set_markup(label: *mut GtkWidget, markup: &str) {
     let markup = c_string(markup);
     unsafe { gtk_label_set_markup(label, markup.as_ptr()) };
@@ -1766,7 +1790,8 @@ fn make_render_snapshot(stats: &Stats) -> RenderSnapshot {
         source_markup: format!("<b>Source:</b>  {}", stats.status_source.label()),
         party_mode_markup: party_mode_markup(),
         refresh_interval_markup: refresh_interval_markup(),
-        tray_label,
+        tray_label: tray_label.clone(),
+        svg_label: tray_label.clone(),
         title,
     }
 }
@@ -1783,6 +1808,11 @@ fn update_state(force: bool) {
         }
         state.last_refresh_at = Some(now);
         let stats = collect_stats();
+        let primary_pct = stats
+            .rate_limits
+            .as_ref()
+            .map(|r| r.primary.used_percent)
+            .unwrap_or(0.0);
         if let Some(rate) = stats.rate_limits.clone() {
             maybe_notify_primary_reset(&mut state, &rate);
             maybe_notify_fast_pace(&mut state, &rate);
@@ -1812,6 +1842,10 @@ fn update_state(force: bool) {
             app_indicator_set_label(state.indicator, tray_label.as_ptr(), guide.as_ptr());
             let title = c_string(&snapshot.title);
             app_indicator_set_title(state.indicator, title.as_ptr());
+            let label_svg = ensure_label_icon(&snapshot.svg_label, primary_pct);
+            let label_path = c_string(&label_svg);
+            let icon_desc = c_string("Codex usage");
+            app_indicator_set_icon_full(state.indicator, label_path.as_ptr(), icon_desc.as_ptr());
         }
         state.last_render = Some(snapshot);
     }
@@ -1912,6 +1946,8 @@ fn main() {
                 0,
             );
             app_indicator_set_status(indicator, 1);
+            let icon_theme_path = c_string(&paths::icon_dir().to_string_lossy());
+            app_indicator_set_icon_theme_path(indicator, icon_theme_path.as_ptr());
             let empty_icon = c_string(&ensure_empty_icon_path());
             let icon_desc = c_string("Codex status");
             app_indicator_set_icon_full(indicator, empty_icon.as_ptr(), icon_desc.as_ptr());

@@ -30,3 +30,7 @@ pub fn config_path() -> PathBuf {
     }
     PathBuf::from("codex-usage-tray-config.json")
 }
+
+pub fn icon_dir() -> PathBuf {
+    env::temp_dir().join("codex-usage-tray-icons")
+}
