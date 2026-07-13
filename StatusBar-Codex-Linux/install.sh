@@ -7,13 +7,13 @@ apps_dir="$HOME/.local/share/applications"
 
 mkdir -p "$bin_dir" "$apps_dir"
 
-install -m 0755 codex-usage-tray "$bin_dir/codex-usage-tray"
-install -m 0644 codex-usage-tray.desktop.example "$apps_dir/codex-usage-tray.desktop"
+install -m 0755 StatusBar-Codex-Linux "$bin_dir/StatusBar-Codex-Linux"
+install -m 0644 StatusBar-Codex-Linux.desktop.example "$apps_dir/StatusBar-Codex-Linux.desktop"
 
 if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database "$apps_dir" >/dev/null 2>&1 || true
 fi
 
-printf 'Installed codex-usage-tray to %s\n' "$bin_dir/codex-usage-tray"
-printf 'Installed desktop entry to %s\n' "$apps_dir/codex-usage-tray.desktop"
-printf 'Run it with: codex-usage-tray\n'
+printf 'Installed StatusBar-Codex-Linux to %s\n' "$bin_dir/StatusBar-Codex-Linux"
+printf 'Installed desktop entry to %s\n' "$apps_dir/StatusBar-Codex-Linux.desktop"
+printf 'Run it with: StatusBar-Codex-Linux\n'

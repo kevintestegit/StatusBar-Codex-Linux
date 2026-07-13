@@ -114,19 +114,19 @@ cargo build --release
 Run it directly:
 
 ```bash
-./target/release/codex-usage-tray
+./target/release/StatusBar-Codex-Linux
 ```
 
 Print a terminal summary:
 
 ```bash
-./target/release/codex-usage-tray --once
+./target/release/StatusBar-Codex-Linux --once
 ```
 
 Print the HTML dashboard to stdout:
 
 ```bash
-./target/release/codex-usage-tray --html
+./target/release/StatusBar-Codex-Linux --html
 ```
 
 ## Install Locally
@@ -146,7 +146,7 @@ Agents can follow [AGENT_INSTALL.md](AGENT_INSTALL.md) for exact download, insta
 Copy the binary somewhere on your `PATH`:
 
 ```bash
-install -Dm755 target/release/codex-usage-tray ~/.local/bin/codex-usage-tray
+install -Dm755 target/release/StatusBar-Codex-Linux ~/.local/bin/StatusBar-Codex-Linux
 ```
 
 Create a desktop entry:
@@ -156,7 +156,7 @@ Create a desktop entry:
 Type=Application
 Name=Codex Usage Tray
 Comment=Show local Codex usage, rate limits, and token-cost estimates
-Exec=codex-usage-tray
+Exec=StatusBar-Codex-Linux
 Icon=codex-desktop
 Terminal=false
 Categories=Utility;Development;
@@ -165,20 +165,20 @@ Categories=Utility;Development;
 Save that as:
 
 ```text
-~/.local/share/applications/codex-usage-tray.desktop
+~/.local/share/applications/StatusBar-Codex-Linux.desktop
 ```
 
 Login autostart is manual and optional. To enable it, copy the same desktop entry to:
 
 ```text
-~/.config/autostart/codex-usage-tray.desktop
+~/.config/autostart/StatusBar-Codex-Linux.desktop
 ```
 
 ## Optional: Start Only When Codex Desktop Is Running
 
 If you prefer the tray to appear only while Codex Desktop is open, run it through a small user-session watcher instead of direct autostart. Keep the watcher outside this repo if it contains local process names or paths for your machine.
 
-A generic version can watch for known Codex Desktop process names and launch `codex-usage-tray` when needed. Different installs may expose different process names, so this is intentionally not hard-coded into the app.
+A generic version can watch for known Codex Desktop process names and launch `StatusBar-Codex-Linux` when needed. Different installs may expose different process names, so this is intentionally not hard-coded into the app.
 
 ## How It Works
 
@@ -199,13 +199,13 @@ This is intentionally separate from notifications: desktop notifications always 
 The setting is stored in:
 
 ```text
-$XDG_CONFIG_HOME/codex-usage-tray/config.json
+$XDG_CONFIG_HOME/StatusBar-Codex-Linux/config.json
 ```
 
 If `XDG_CONFIG_HOME` is not set, it falls back to:
 
 ```text
-$HOME/.config/codex-usage-tray/config.json
+$HOME/.config/StatusBar-Codex-Linux/config.json
 ```
 
 The Details dashboard shows whether party mode is currently enabled.
@@ -214,7 +214,7 @@ The Details dashboard shows whether party mode is currently enabled.
 
 Good repository names:
 
-- `codex-usage-tray`
+- `StatusBar-Codex-Linux`
 - `codex-usage-indicator`
 - `codex-linux-tray`
 

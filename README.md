@@ -76,11 +76,11 @@ O app lê arquivos JSONL de sessão do Codex em disco, analisa eventos `token_co
 - **Modo festa**: overlay fullscreen com confete Cairo via GTK Layer Shell
 - **Dashboard HTML detalhado**: tabela por modelo com input/cached/output/reasoning/custo
 - **Cache inteligente**: não reparsa arquivos JSONL inalterados
-- **Ícones SVG**: gerados dinamicamente em `/tmp/codex-usage-tray-icons/`
+- **Ícones SVG**: gerados dinamicamente em `/tmp/StatusBar-Codex-Linux-icons/`
 
 ### Configuração
 
-Arquivo: `~/.config/codex-usage-tray/config.json`
+Arquivo: `~/.config/StatusBar-Codex-Linux/config.json`
 
 ```json
 {
@@ -99,7 +99,7 @@ sudo apt install cargo pkg-config libgtk-3-dev \
   libayatana-appindicator3-dev libgtk-layer-shell-dev
 
 cargo build --release
-./target/release/codex-usage-tray
+./target/release/StatusBar-Codex-Linux
 ```
 
 ### Dashboard detalhado

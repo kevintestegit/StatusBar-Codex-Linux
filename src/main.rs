@@ -30,7 +30,7 @@ fn debug_log(msg: &str) {
     if env::var_os("CODEX_USAGE_TRAY_DEBUG").is_none() {
         return;
     }
-    let _ = writeln!(io::stderr(), "[codex-usage-tray] {msg}");
+    let _ = writeln!(io::stderr(), "[StatusBar-Codex-Linux] {msg}");
 }
 
 #[derive(Clone, Default)]
@@ -1287,7 +1287,7 @@ fn c_string(value: &str) -> CString {
 }
 
 fn ensure_empty_icon_path() -> String {
-    let dir = env::temp_dir().join("codex-usage-tray-icons");
+    let dir = env::temp_dir().join("StatusBar-Codex-Linux-icons");
     let _ = fs::create_dir_all(&dir);
     let path = dir.join("codex-usage-empty.svg");
     if !path.exists() {
@@ -1298,7 +1298,7 @@ fn ensure_empty_icon_path() -> String {
 }
 
 fn ensure_label_icon(label: &str, pct: f64) -> String {
-    let dir = env::temp_dir().join("codex-usage-tray-icons");
+    let dir = env::temp_dir().join("StatusBar-Codex-Linux-icons");
     let _ = fs::create_dir_all(&dir);
     let slug: String = label.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == ' ').collect();
     let name = format!("codex-label-{}.png", slug.trim().replace(' ', "_"));
@@ -1320,7 +1320,7 @@ fn ensure_label_icon(label: &str, pct: f64) -> String {
     // Also update the themed icon location so GNOME picks it up
     let themed_dir = home_icon_dir();
     let _ = fs::create_dir_all(&themed_dir);
-    let themed_path = themed_dir.join("codex-usage-tray.png");
+    let themed_path = themed_dir.join("StatusBar-Codex-Linux.png");
     let _ = fs::copy(&path, &themed_path);
     let _ = Command::new("gtk-update-icon-cache")
         .args(["-q", "-f", &home_icon_dir().parent().unwrap().to_string_lossy()])
@@ -1332,7 +1332,7 @@ fn home_icon_dir() -> PathBuf {
     if let Some(home) = env::var_os("HOME") {
         PathBuf::from(home).join(".local/share/icons/hicolor/scalable/apps")
     } else {
-        PathBuf::from("/tmp/codex-usage-tray-icons")
+        PathBuf::from("/tmp/StatusBar-Codex-Linux-icons")
     }
 }
 
@@ -1910,12 +1910,12 @@ fn main() {
     }
     // Single-instance guard: write PID to a runtime lock file and exit if another live instance exists.
     if let Ok(runtime_dir) = std::env::var("XDG_RUNTIME_DIR") {
-        let lock_path = std::path::Path::new(&runtime_dir).join("codex-usage-tray.pid");
+        let lock_path = std::path::Path::new(&runtime_dir).join("StatusBar-Codex-Linux.pid");
         if lock_path.exists() {
             if let Ok(content) = std::fs::read_to_string(&lock_path) {
                 if let Ok(pid) = content.trim().parse::<i32>() {
                     if std::path::Path::new(&format!("/proc/{}", pid)).exists() {
-                        eprintln!("codex-usage-tray: another instance (pid {}) is running; exiting", pid);
+                        eprintln!("StatusBar-Codex-Linux: another instance (pid {}) is running; exiting", pid);
                         return;
                     }
                 }
@@ -1956,7 +1956,7 @@ fn main() {
         unsafe {
             gtk_init(ptr::null_mut(), ptr::null_mut());
             let indicator = app_indicator_new(
-                c_string("codex-usage-tray").as_ptr(),
+                c_string("StatusBar-Codex-Linux").as_ptr(),
                 c_string("utilities-terminal-symbolic").as_ptr(),
                 0,
             );
@@ -1964,7 +1964,7 @@ fn main() {
             let icon_theme_path = c_string(&paths::icon_dir().to_string_lossy());
             app_indicator_set_icon_theme_path(indicator, icon_theme_path.as_ptr());
             let icon_desc = c_string("Codex usage");
-            app_indicator_set_icon_full(indicator, c_string("codex-usage-tray").as_ptr(), icon_desc.as_ptr());
+            app_indicator_set_icon_full(indicator, c_string("StatusBar-Codex-Linux").as_ptr(), icon_desc.as_ptr());
         let menu = gtk_menu_new();
         let (brand_header, _brand_header_label) =
             markup_menu_item("<span size='larger' weight='bold' color='#16b8a6'>◆ Codex Usage Tray</span>");

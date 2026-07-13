@@ -196,7 +196,7 @@ fn fetch_live_rate_limits() -> Result<RateLimits, String> {
         }
     });
 
-    let init = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"codex-usage-tray","title":"Codex Usage Tray","version":"0.1.0"},"capabilities":{}}}"#;
+    let init = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"StatusBar-Codex-Linux","title":"Codex Usage Tray","version":"0.1.0"},"capabilities":{}}}"#;
     writeln!(stdin, "{init}").map_err(|e| format!("write initialize: {e}"))?;
     stdin.flush().map_err(|e| format!("flush initialize: {e}"))?;
 

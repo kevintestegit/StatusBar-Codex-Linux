@@ -14,7 +14,7 @@ pub fn codex_home() -> PathBuf {
 
 pub fn details_html_path() -> PathBuf {
     let user = env::var("USER").unwrap_or_else(|_| "user".into());
-    let dir = env::temp_dir().join(format!("codex-usage-tray-{user}"));
+    let dir = env::temp_dir().join(format!("StatusBar-Codex-Linux-{user}"));
     let _ = fs::create_dir_all(&dir);
     dir.join("details.html")
 }
@@ -23,14 +23,14 @@ pub fn config_path() -> PathBuf {
     if let Some(config_home) = env::var_os("XDG_CONFIG_HOME")
         && !config_home.is_empty()
     {
-        return PathBuf::from(config_home).join("codex-usage-tray/config.json");
+        return PathBuf::from(config_home).join("StatusBar-Codex-Linux/config.json");
     }
     if let Some(home) = env::var_os("HOME") {
-        return PathBuf::from(home).join(".config/codex-usage-tray/config.json");
+        return PathBuf::from(home).join(".config/StatusBar-Codex-Linux/config.json");
     }
-    PathBuf::from("codex-usage-tray-config.json")
+    PathBuf::from("StatusBar-Codex-Linux-config.json")
 }
 
 pub fn icon_dir() -> PathBuf {
-    env::temp_dir().join("codex-usage-tray-icons")
+    env::temp_dir().join("StatusBar-Codex-Linux-icons")
 }

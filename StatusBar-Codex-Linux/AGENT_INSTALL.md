@@ -73,8 +73,8 @@ Run:
 This installs:
 
 ```text
-~/.local/bin/codex-usage-tray
-~/.local/share/applications/codex-usage-tray.desktop
+~/.local/bin/StatusBar-Codex-Linux
+~/.local/share/applications/StatusBar-Codex-Linux.desktop
 ```
 
 Ensure `~/.local/bin` is on `PATH`.
@@ -84,13 +84,13 @@ Ensure `~/.local/bin` is on `PATH`.
 Run:
 
 ```bash
-codex-usage-tray
+StatusBar-Codex-Linux
 ```
 
 For a desktop session, prefer launching from the application menu or with:
 
 ```bash
-setsid -f ~/.local/bin/codex-usage-tray
+setsid -f ~/.local/bin/StatusBar-Codex-Linux
 ```
 
 ## Optional Autostart
@@ -101,7 +101,7 @@ If the user wants Codex Usage Tray to start on login, they must enable autostart
 
 ```bash
 mkdir -p ~/.config/autostart
-cp ~/.local/share/applications/codex-usage-tray.desktop ~/.config/autostart/
+cp ~/.local/share/applications/StatusBar-Codex-Linux.desktop ~/.config/autostart/
 ```
 
 Tell the user explicitly whether you enabled autostart. Do not imply it was enabled automatically.
@@ -111,7 +111,7 @@ Tell the user explicitly whether you enabled autostart. Do not imply it was enab
 Check that the process is running:
 
 ```bash
-pgrep -af codex-usage-tray
+pgrep -af StatusBar-Codex-Linux
 ```
 
 If the tray icon is not visible, tell the user that their desktop shell or panel must support AppIndicator/status-notifier items.
