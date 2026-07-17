@@ -7,7 +7,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::{RateLimits, WindowLimit, debug_log};
+use crate::{debug_log, RateLimits, WindowLimit};
 
 const LIVE_FETCH_TIMEOUT: Duration = Duration::from_secs(20);
 
@@ -95,10 +95,8 @@ pub fn resolve_codex_status(jsonl_limits: Option<RateLimits>) -> CodexStatus {
 /// Expired windows must not be shown as current usage (and never as fake 0%).
 pub fn rate_limits_still_valid(rate: &RateLimits) -> bool {
     let now = chrono::Utc::now().timestamp();
-    rate.primary
-        .resets_at
-        .map(|reset| reset > now)
-        .unwrap_or(false)
+    let open = |w: &WindowLimit| w.resets_at.map(|reset| reset > now).unwrap_or(false);
+    open(&rate.primary) || open(&rate.secondary)
 }
 
 pub fn auth_status_label() -> String {
@@ -198,7 +196,9 @@ fn fetch_live_rate_limits() -> Result<RateLimits, String> {
 
     let init = r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"clientInfo":{"name":"StatusBar-Codex-Linux","title":"Codex Usage Tray","version":"0.1.0"},"capabilities":{}}}"#;
     writeln!(stdin, "{init}").map_err(|e| format!("write initialize: {e}"))?;
-    stdin.flush().map_err(|e| format!("flush initialize: {e}"))?;
+    stdin
+        .flush()
+        .map_err(|e| format!("flush initialize: {e}"))?;
 
     let deadline = Instant::now() + LIVE_FETCH_TIMEOUT;
     let mut rate_limits: Option<RateLimits> = None;
@@ -209,7 +209,10 @@ fn fetch_live_rate_limits() -> Result<RateLimits, String> {
         let remaining = deadline.saturating_duration_since(Instant::now());
         match rx.recv_timeout(remaining.min(Duration::from_millis(250))) {
             Ok(Ok(line)) => {
-                debug_log(&format!("app-server line: {}", truncate_for_log(&line, 180)));
+                debug_log(&format!(
+                    "app-server line: {}",
+                    truncate_for_log(&line, 180)
+                ));
                 let Ok(msg) = serde_json::from_str::<Value>(&line) else {
                     continue;
                 };
@@ -305,6 +308,7 @@ fn parse_window_fields(value: Option<&Value>) -> WindowLimit {
     WindowLimit {
         used_percent: number_field(value, "used_percent", "usedPercent").unwrap_or(0.0),
         resets_at: int_field(value, "resets_at", "resetsAt"),
+        window_duration_mins: int_field(value, "window_duration_mins", "windowDurationMins"),
     }
 }
 
@@ -335,10 +339,12 @@ mod tests {
             primary: WindowLimit {
                 used_percent: 25.0,
                 resets_at: Some(now - 60),
+                ..Default::default()
             },
             secondary: WindowLimit {
                 used_percent: 40.0,
                 resets_at: Some(now + 3600),
+                ..Default::default()
             },
         };
         assert!(!rate_limits_still_valid(&rate));
@@ -352,10 +358,12 @@ mod tests {
             primary: WindowLimit {
                 used_percent: 1.0,
                 resets_at: Some(now + 3600),
+                ..Default::default()
             },
             secondary: WindowLimit {
                 used_percent: 67.0,
                 resets_at: Some(now + 86400),
+                ..Default::default()
             },
         };
         assert!(rate_limits_still_valid(&rate));

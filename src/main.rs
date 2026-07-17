@@ -13,6 +13,7 @@ use std::time::UNIX_EPOCH;
 use walkdir::WalkDir;
 
 mod config;
+mod mascot;
 mod paths;
 mod pricing;
 mod status;
@@ -64,6 +65,7 @@ impl Usage {
 pub struct WindowLimit {
     pub used_percent: f64,
     pub resets_at: Option<i64>,
+    pub window_duration_mins: Option<i64>,
 }
 
 #[derive(Clone, Default)]
@@ -279,6 +281,7 @@ struct AppState {
     updated_label: *mut GtkWidget,
     source_label: *mut GtkWidget,
     party_mode_label: *mut GtkWidget,
+    mascot_label: *mut GtkWidget,
     refresh_interval_label: *mut GtkWidget,
     last_render: Option<RenderSnapshot>,
     last_refresh_at: Option<i64>,
@@ -303,6 +306,7 @@ struct RenderSnapshot {
     updated_markup: String,
     source_markup: String,
     party_mode_markup: String,
+    mascot_markup: String,
     refresh_interval_markup: String,
     tray_label: String,
     svg_label: String,
@@ -575,6 +579,33 @@ fn parse_window(value: Option<&Value>) -> WindowLimit {
             .and_then(Value::as_f64)
             .unwrap_or(0.0),
         resets_at: value.get("resets_at").and_then(Value::as_i64),
+        window_duration_mins: value
+            .get("windowDurationMins")
+            .and_then(Value::as_i64)
+            .or_else(|| value.get("window_duration_mins").and_then(Value::as_i64)),
+    }
+}
+
+fn window_present(w: &WindowLimit) -> bool {
+    w.resets_at.is_some()
+}
+
+// ponytail: label by the real window duration the API reports, not a hardcoded "5h"/"W".
+fn window_short(mins: Option<i64>) -> &'static str {
+    match mins {
+        Some(300) => "5h",
+        Some(10080) => "W",
+        Some(m) if m >= 1440 => "W",
+        _ => "lim",
+    }
+}
+
+fn window_full(mins: Option<i64>) -> &'static str {
+    match mins {
+        Some(300) => "5h",
+        Some(10080) => "Weekly",
+        Some(m) if m >= 1440 => "Weekly",
+        _ => "Limit",
     }
 }
 
@@ -678,10 +709,12 @@ struct Pace {
 
 fn primary_pace(limit: &WindowLimit) -> Option<Pace> {
     let reset = limit.resets_at?;
+    // ponytail: use the real window length the API reports, not a hardcoded 5h.
+    let window_secs = limit.window_duration_mins.unwrap_or(300).max(1) as i64 * 60;
     let now = Utc::now().timestamp();
-    let seconds_left = (reset - now).clamp(0, PRIMARY_WINDOW_SECONDS);
-    let elapsed = PRIMARY_WINDOW_SECONDS - seconds_left;
-    let expected_percent = elapsed as f64 * 100.0 / PRIMARY_WINDOW_SECONDS as f64;
+    let seconds_left = (reset - now).clamp(0, window_secs);
+    let elapsed = window_secs - seconds_left;
+    let expected_percent = elapsed as f64 * 100.0 / window_secs as f64;
     Some(Pace {
         expected_percent,
         ahead_percent: limit.used_percent - expected_percent,
@@ -778,10 +811,12 @@ fn make_details_text(stats: &Stats) -> String {
         .join("\n");
     let rate_block = match &rate {
         Some(rate) => format!(
-            "Rate limits (Codex/ChatGPT account)\n5h: {:.0}% used | reset in {} at {}\nWeekly: {:.0}% used | reset in {} at {}\nPace: {} | expected {:.1}%",
+            "Rate limits (Codex/ChatGPT account)\n{}: {:.0}% used | reset in {} at {}\n{}: {:.0}% used | reset in {} at {}\nPace: {} | expected {:.1}%",
+            window_short(rate.primary.window_duration_mins),
             rate.primary.used_percent,
             reset_text(rate.primary.resets_at),
             reset_clock_text(rate.primary.resets_at),
+            window_short(rate.secondary.window_duration_mins),
             rate.secondary.used_percent,
             reset_text(rate.secondary.resets_at),
             reset_clock_text(rate.secondary.resets_at),
@@ -842,6 +877,16 @@ fn make_details_html(stats: &Stats) -> String {
         .clone()
         .and_then(|r| display_rate_limits(&r))
         .unwrap_or_default();
+    let primary_title = if window_present(&rate.primary) {
+        window_full(rate.primary.window_duration_mins)
+    } else {
+        "n/a"
+    };
+    let secondary_title = if window_present(&rate.secondary) {
+        window_full(rate.secondary.window_duration_mins)
+    } else {
+        "n/a"
+    };
     let config = load_config();
     let mut top: Vec<_> = stats.by_model.iter().collect();
     top.sort_by_key(|(_, usage)| -usage.total_tokens);
@@ -1103,7 +1148,7 @@ tr:last-child td {{ border-bottom: 0; }}
   <section class="grid">
     <article class="card pad span-6" style="--dot:{}">
       <div class="rate-head">
-        <div class="rate-title"><span class="dot"></span><span>5h rate limit</span></div>
+        <div class="rate-title"><span class="dot"></span><span>{} rate limit</span></div>
         <div class="metric">{:.0}%</div>
       </div>
       <div class="progress"><div class="bar" style="--value:{:.4}%"></div></div>
@@ -1115,7 +1160,7 @@ tr:last-child td {{ border-bottom: 0; }}
 
     <article class="card pad span-6" style="--dot:{}">
       <div class="rate-head">
-        <div class="rate-title"><span class="dot"></span><span>Weekly rate limit</span></div>
+        <div class="rate-title"><span class="dot"></span><span>{} rate limit</span></div>
         <div class="metric">{:.0}%</div>
       </div>
       <div class="progress"><div class="bar" style="--value:{:.4}%"></div></div>
@@ -1130,7 +1175,7 @@ tr:last-child td {{ border-bottom: 0; }}
         <div class="rate-title"><span class="dot"></span><span>Usage pace</span></div>
         <div class="metric">{}</div>
       </div>
-      <div class="small">Expected <strong class="muted">{:.1}%</strong> of the 5h window by now.</div>
+        <div class="small">Expected <strong class="muted">{:.1}%</strong> of the {} window by now.</div>
     </article>
 
     <article class="card pad span-12">
@@ -1211,11 +1256,13 @@ tr:last-child td {{ border-bottom: 0; }}
 </body>
 </html>"#,
         html_escape(display_plan(&rate.plan_type)),
+        primary_title,
         rate_color(rate.primary.used_percent),
         rate.primary.used_percent,
         rate.primary.used_percent.clamp(0.0, 100.0),
         html_escape(&reset_text(rate.primary.resets_at)),
         html_escape(&reset_clock_text(rate.primary.resets_at)),
+        secondary_title,
         rate_color(rate.secondary.used_percent),
         rate.secondary.used_percent,
         rate.secondary.used_percent.clamp(0.0, 100.0),
@@ -1226,6 +1273,7 @@ tr:last-child td {{ border-bottom: 0; }}
         primary_pace(&rate.primary)
             .map(|pace| pace.expected_percent)
             .unwrap_or(0.0),
+        window_full(rate.primary.window_duration_mins),
         if config.party_mode { "On" } else { "Off" },
         if config.party_mode {
             "Confetti enabled"
@@ -1297,35 +1345,75 @@ fn ensure_empty_icon_path() -> String {
     path.to_string_lossy().into_owned()
 }
 
-fn ensure_label_icon(label: &str, pct: f64) -> String {
-    let dir = env::temp_dir().join("StatusBar-Codex-Linux-icons");
-    let _ = fs::create_dir_all(&dir);
-    let slug: String = label.chars().filter(|c| c.is_alphanumeric() || *c == '_' || *c == ' ').collect();
-    let name = format!("codex-label-{}.png", slug.trim().replace(' ', "_"));
-    let path = dir.join(&name);
-    let color = rate_color(pct);
-    let svg = format!(
-        r##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" viewBox="0 0 200 28">
-  <rect width="200" height="28" rx="4" fill="#1a1a1a"/>
-  <text x="100" y="20" text-anchor="middle" font-family="SF Mono, JetBrains Mono, monospace" font-size="15" font-weight="700" fill="{color}">{text}</text>
+/// Build tray icon PNG. Returns icon name (no path/ext) for app_indicator_set_icon_full.
+/// Does NOT lock STATE — caller must set the indicator icon.
+fn ensure_label_icon(label: &str, _pct: f64) -> String {
+    let ind_dir = paths::icon_dir();
+    let _ = fs::create_dir_all(&ind_dir);
+    // Unique name forces AppIndicator to reload each animation frame.
+    let icon_name = if show_mascot() {
+        format!("StatusBar-Codex-Linux-{}", mascot::icon_suffix())
+    } else {
+        "StatusBar-Codex-Linux".into()
+    };
+    let path = ind_dir.join(format!("{icon_name}.png"));
+
+    if show_mascot() {
+        let frame = mascot::current_frame_path();
+        // GIF ships with opaque gray bg. Kill it (fuzz covers the ~180-220 gray ramp)
+        // so only the robot draws on the tray's real background; white label floats right.
+        let _ = Command::new("convert")
+            .arg("-size").arg("110x34").arg("xc:none")
+            .arg("(").arg(&frame).arg("-resize").arg("x30")
+            .arg("-fuzz").arg("12%")
+            .arg("-transparent").arg("gray(180,180,180)")
+            .arg(")")
+            .arg("-geometry").arg("+3+2").arg("-compose").arg("over").arg("-composite")
+            .arg("-fill").arg("white")
+            .arg("-font").arg("DejaVu-Sans-Bold")
+            .arg("-pointsize").arg("15")
+            .arg("-annotate").arg(format!("+52+{}", 25)) // vertical center
+            .arg(label.replace('%', "%%"))
+            .arg(&path)
+            .output();
+    } else {
+        let svg = format!(
+            r##"<svg xmlns="http://www.w3.org/2000/svg" width="200" height="28" viewBox="0 0 200 28">
+  <text x="100" y="20" text-anchor="middle" font-family="SF Mono, JetBrains Mono, monospace" font-size="15" font-weight="700" fill="#ffffff">{text}</text>
 </svg>"##,
-        text = html_escape(label),
-        color = color
-    );
-    let svg_path = dir.join(&name.replace(".png", ".svg"));
-    let _ = fs::write(&svg_path, svg);
-    let _ = Command::new("convert")
-        .args(["-background", "#1a1a1a", "-size", "200x28", &svg_path.to_string_lossy(), &path.to_string_lossy()])
-        .output();
-    // Also update the themed icon location so GNOME picks it up
+            text = html_escape(label),
+        );
+        let svg_path = ind_dir.join(format!("{icon_name}.svg"));
+        let _ = fs::write(&svg_path, svg);
+        let _ = Command::new("convert")
+            .args([
+                "-background",
+                "none",
+                "-size",
+                "200x28",
+                &svg_path.to_string_lossy(),
+                &path.to_string_lossy(),
+            ])
+            .output();
+    }
+
+    let _ = fs::create_dir_all(ind_dir.join("apps"));
+    let _ = fs::copy(&path, ind_dir.join("apps").join(format!("{icon_name}.png")));
+    let _ = fs::copy(&path, ind_dir.join("StatusBar-Codex-Linux.png"));
+
     let themed_dir = home_icon_dir();
     let _ = fs::create_dir_all(&themed_dir);
-    let themed_path = themed_dir.join("StatusBar-Codex-Linux.png");
-    let _ = fs::copy(&path, &themed_path);
-    let _ = Command::new("gtk-update-icon-cache")
-        .args(["-q", "-f", &home_icon_dir().parent().unwrap().to_string_lossy()])
-        .output();
-    path.to_string_lossy().into_owned()
+    let _ = fs::copy(&path, themed_dir.join("StatusBar-Codex-Linux.png"));
+
+    icon_name
+}
+
+unsafe fn set_tray_icon(indicator: *mut AppIndicator, icon_name: &str) {
+    let name = c_string(icon_name);
+    let desc = c_string("Codex usage");
+    unsafe {
+        app_indicator_set_icon_full(indicator, name.as_ptr(), desc.as_ptr());
+    }
 }
 
 fn home_icon_dir() -> PathBuf {
@@ -1355,6 +1443,29 @@ unsafe extern "C" fn on_details(_widget: *mut GtkWidget, _data: *mut c_void) {
 unsafe extern "C" fn on_toggle_party_mode(_widget: *mut GtkWidget, _data: *mut c_void) {
     set_party_mode(!party_mode_enabled());
     update_state(true);
+}
+
+unsafe extern "C" fn on_toggle_mascot(_widget: *mut GtkWidget, _data: *mut c_void) {
+    set_show_mascot(!show_mascot());
+    update_state(true);
+}
+
+unsafe extern "C" fn on_mascot_anim(_data: *mut c_void) -> c_int {
+    if !show_mascot() {
+        return 1;
+    }
+    mascot::advance_frame();
+    if let Some(state) = STATE.get() {
+        let state = state.lock().unwrap();
+        if let Some(snap) = state.last_render.as_ref() {
+            let label = snap.svg_label.clone();
+            let indicator = state.indicator;
+            drop(state);
+            let icon_name = ensure_label_icon(&label, 0.0);
+            set_tray_icon(indicator, &icon_name);
+        }
+    }
+    1
 }
 
 unsafe extern "C" fn on_refresh_5s(_widget: *mut GtkWidget, _data: *mut c_void) {
@@ -1670,6 +1781,7 @@ fn send_reset_notification(body: &str, party: bool) {
         .arg("Codex Usage")
         .arg(body)
         .spawn();
+    mascot::notify_success();
     if party_mode_enabled() && party_overlay_allowed() {
         show_confetti(body, party);
     }
@@ -1720,7 +1832,6 @@ fn make_render_snapshot(stats: &Stats) -> RenderSnapshot {
         .rate_limits
         .as_ref()
         .and_then(display_rate_limits);
-    let available = rate.is_some();
     let primary = rate
         .as_ref()
         .map(|r| r.primary.clone())
@@ -1733,38 +1844,44 @@ fn make_render_snapshot(stats: &Stats) -> RenderSnapshot {
         .as_ref()
         .map(|r| display_plan(&r.plan_type).to_string())
         .unwrap_or_else(|| "n/a".into());
-    let (tray_label, title) = if let Some(rate) = &rate {
-        (
-            format!(
-                "5h {:.0}% | W {:.0}%",
-                rate.primary.used_percent, rate.secondary.used_percent
-            ),
-            format!(
-                "Codex | 5h {:.0}% reset {} | W {:.0}% reset {} | {}",
-                rate.primary.used_percent,
-                reset_text(rate.primary.resets_at),
-                rate.secondary.used_percent,
-                reset_text(rate.secondary.resets_at),
-                plan
-            ),
-        )
+    let present_windows: Vec<&WindowLimit> = if let Some(rate) = &rate {
+        let mut v = Vec::new();
+        if window_present(&rate.primary) {
+            v.push(&rate.primary);
+        }
+        if window_present(&rate.secondary) {
+            v.push(&rate.secondary);
+        }
+        v
     } else {
-        (
-            "Codex status unavailable".into(),
-            "Codex status unavailable — open Codex CLI or check auth".into(),
-        )
+        Vec::new()
+    };
+    let tray_label = if present_windows.is_empty() {
+        "Codex status unavailable".to_string()
+    } else {
+        present_windows
+            .iter()
+            .map(|w| format!("{} {:.0}%", window_short(w.window_duration_mins), w.used_percent))
+            .collect::<Vec<_>>()
+            .join(" | ")
+    };
+    let title = if present_windows.is_empty() {
+        "Codex status unavailable — open Codex CLI or check auth".to_string()
+    } else {
+        format!("Codex | {} | {}", tray_label, plan)
     };
     RenderSnapshot {
-        primary_header_markup: if available {
+        primary_header_markup: if window_present(&primary) {
             format!(
-                "<b>5h limit</b>  |  reset in {} ({})",
+                "<b>{} limit</b>  |  reset in {} ({})",
+                window_full(primary.window_duration_mins),
                 reset_text(primary.resets_at),
                 reset_clock_text(primary.resets_at)
             )
         } else {
-            "<b>5h limit</b>  |  unavailable".into()
+            "<b>limit unavailable</b>".into()
         },
-        limit_markup: if available {
+        limit_markup: if window_present(&primary) {
             format!(
                 "{}  <b><span color='{}'>{:.0}%</span> used</b>",
                 usage_bar(primary.used_percent),
@@ -1774,16 +1891,17 @@ fn make_render_snapshot(stats: &Stats) -> RenderSnapshot {
         } else {
             "no recent Codex/ChatGPT status".into()
         },
-        weekly_header_markup: if available {
+        weekly_header_markup: if window_present(&secondary) {
             format!(
-                "<b>Weekly limit</b>  |  reset in {} ({})",
+                "<b>{} limit</b>  |  reset in {} ({})",
+                window_full(secondary.window_duration_mins),
                 reset_text(secondary.resets_at),
                 reset_clock_text(secondary.resets_at)
             )
         } else {
-            "<b>Weekly limit</b>  |  unavailable".into()
+            "<b>limit unavailable</b>".into()
         },
-        weekly_markup: if available {
+        weekly_markup: if window_present(&secondary) {
             format!(
                 "{}  <b><span color='{}'>{:.0}%</span> used</b>",
                 usage_bar(secondary.used_percent),
@@ -1793,7 +1911,7 @@ fn make_render_snapshot(stats: &Stats) -> RenderSnapshot {
         } else {
             "no recent Codex/ChatGPT status".into()
         },
-        pace_markup: if available {
+        pace_markup: if window_present(&primary) {
             pace_delta_markup(&primary)
         } else {
             "<b>Pace:</b>  n/a".into()
@@ -1806,6 +1924,7 @@ fn make_render_snapshot(stats: &Stats) -> RenderSnapshot {
         ),
         source_markup: format!("<b>Source:</b>  {}", stats.status_source.label()),
         party_mode_markup: party_mode_markup(),
+        mascot_markup: mascot_markup(),
         refresh_interval_markup: refresh_interval_markup(),
         tray_label: tray_label.clone(),
         svg_label: tray_label.clone(),
@@ -1850,17 +1969,20 @@ fn update_state(force: bool) {
             set_markup(state.updated_label, &snapshot.updated_markup);
             set_markup(state.source_label, &snapshot.source_markup);
             set_markup(state.party_mode_label, &snapshot.party_mode_markup);
+            set_markup(state.mascot_label, &snapshot.mascot_markup);
             set_markup(
                 state.refresh_interval_label,
                 &snapshot.refresh_interval_markup,
             );
             let tray_label = c_string(&snapshot.tray_label);
-            let guide = c_string("5h 000% | W 000%");
+            let guide = c_string("W 100%");
             app_indicator_set_label(state.indicator, tray_label.as_ptr(), guide.as_ptr());
             let title = c_string(&snapshot.title);
             app_indicator_set_title(state.indicator, title.as_ptr());
             // Regenerate the themed icon file so GTK picks it up on theme refresh
-            ensure_label_icon(&snapshot.svg_label, primary_pct);
+            mascot::tick(primary_pct);
+            let icon_name = ensure_label_icon(&snapshot.svg_label, primary_pct);
+            set_tray_icon(state.indicator, &icon_name);
         }
         state.last_render = Some(snapshot);
     }
@@ -1985,6 +2107,7 @@ fn main() {
         let settings = menu_item("Refresh interval", true);
         let settings_menu = gtk_menu_new();
         let (party_mode_item, party_mode_label) = markup_menu_item(&party_mode_markup());
+        let (mascot_item, mascot_label) = markup_menu_item(&mascot_markup());
         let (refresh_interval_item, refresh_interval_label) =
             markup_menu_item(&refresh_interval_markup());
         let refresh_5s = menu_item("Every 5 seconds", true);
@@ -2020,6 +2143,7 @@ fn main() {
         }
         for item in [
             party_mode_item,
+            mascot_item,
             gtk_separator_menu_item_new(),
             refresh_interval_item,
             refresh_5s,
@@ -2032,6 +2156,7 @@ fn main() {
         }
         gtk_menu_item_set_submenu(settings, settings_menu);
         connect_activate(party_mode_item, on_toggle_party_mode);
+        connect_activate(mascot_item, on_toggle_mascot);
         connect_activate(refresh_5s, on_refresh_5s);
         connect_activate(refresh_15s, on_refresh_15s);
         connect_activate(refresh_30s, on_refresh_30s);
@@ -2055,6 +2180,7 @@ fn main() {
                 updated_label,
                 source_label,
                 party_mode_label,
+                mascot_label,
                 refresh_interval_label,
                 last_render: None,
                 last_refresh_at: None,
@@ -2069,6 +2195,8 @@ fn main() {
             .ok();
         update_state(true);
         g_timeout_add_seconds(MIN_REFRESH_SECONDS, Some(on_timer), ptr::null_mut());
+        // ~8 fps tray mascot animation
+        g_timeout_add(125, Some(on_mascot_anim), ptr::null_mut());
         gtk_main();
     }
 }

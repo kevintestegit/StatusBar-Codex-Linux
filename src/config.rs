@@ -10,6 +10,7 @@ const MAX_REFRESH_SECONDS: u32 = 3600;
 #[derive(Clone, Copy)]
 pub struct AppConfig {
     pub party_mode: bool,
+    pub show_mascot: bool,
     pub refresh_seconds: u32,
 }
 
@@ -17,6 +18,7 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             party_mode: false,
+            show_mascot: true,
             refresh_seconds: DEFAULT_REFRESH_SECONDS,
         }
     }
@@ -35,6 +37,10 @@ pub fn load_config() -> AppConfig {
             .get("party_mode")
             .and_then(Value::as_bool)
             .unwrap_or(default.party_mode),
+        show_mascot: value
+            .get("show_mascot")
+            .and_then(Value::as_bool)
+            .unwrap_or(default.show_mascot),
         refresh_seconds: value
             .get("refresh_seconds")
             .and_then(Value::as_u64)
@@ -49,8 +55,9 @@ pub fn save_config(config: AppConfig) {
         let _ = fs::create_dir_all(parent);
     }
     let body = format!(
-        "{{\n  \"party_mode\": {},\n  \"refresh_seconds\": {}\n}}\n",
+        "{{\n  \"party_mode\": {},\n  \"show_mascot\": {},\n  \"refresh_seconds\": {}\n}}\n",
         if config.party_mode { "true" } else { "false" },
+        if config.show_mascot { "true" } else { "false" },
         config.refresh_seconds
     );
     let _ = fs::write(path, body);
@@ -63,6 +70,16 @@ pub fn party_mode_enabled() -> bool {
 pub fn set_party_mode(enabled: bool) {
     let mut config = load_config();
     config.party_mode = enabled;
+    save_config(config);
+}
+
+pub fn show_mascot() -> bool {
+    load_config().show_mascot
+}
+
+pub fn set_show_mascot(enabled: bool) {
+    let mut config = load_config();
+    config.show_mascot = enabled;
     save_config(config);
 }
 
@@ -88,6 +105,14 @@ pub fn party_mode_markup() -> String {
         "🎉  Party mode:  <b>On</b>".into()
     } else {
         "🎉  Party mode:  <b>Off</b>".into()
+    }
+}
+
+pub fn mascot_markup() -> String {
+    if show_mascot() {
+        "🦦  Mascot:  <b>On</b>".into()
+    } else {
+        "🦦  Mascot:  <b>Off</b>".into()
     }
 }
 

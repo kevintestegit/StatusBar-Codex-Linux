@@ -16,7 +16,11 @@ fn main() {
         ("libglib-2.0.so", "libglib-2.0.so.0"),
         ("libcairo.so", "libcairo.so.2"),
         ("libgtk-layer-shell.so", "libgtk-layer-shell.so.0"),
-        ("libayatana-appindicator3.so", "libayatana-appindicator3.so.1"),
+        (
+            "libayatana-appindicator3.so",
+            "libayatana-appindicator3.so.1",
+        ),
+        ("libgdk_pixbuf-2.0.so", "libgdk_pixbuf-2.0.so.0"),
     ] {
         let target = libdir.join(soname);
         let link = link_libs.join(name);
