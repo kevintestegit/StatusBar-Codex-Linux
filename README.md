@@ -1,6 +1,18 @@
 # StatusBar Codex Linux
 
+<div align="center">
+  <img width="120" alt="Mascot" src="assets/mascot/mascot.gif">
+</div>
+
 Um applet nativo de **bandeja do sistema Linux** que exibe o uso do Codex diretamente na barra superior.
+
+## Instalação
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/kevintestegit/StatusBar-Codex-Linux/main/install.sh | sh
+```
+
+O script pergunta (Y/n) antes de instalar Rust e deps do sistema.
 
 <div align="center">
   <img width="260" alt="Menu da bandeja" src="tray-menu.png">
